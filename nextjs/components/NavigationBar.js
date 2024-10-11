@@ -1,75 +1,36 @@
-import * as React from "react";
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Menu,
-  MenuItem,
-  Box,
-  ListItemIcon,
-} from "@mui/material";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import FunctionsIcon from "@mui/icons-material/Functions";
-import Divider from "@mui/material/Divider";
-import PersonIcon from "@mui/icons-material/Person";
-import useBearStore from "@/store/useBearStore";
+import Link from 'next/link';
+import { AppBar, Toolbar, Typography, Box } from '@mui/material';
 
-const NavigationLayout = ({ children }) => {
-  const router = useRouter();
-  const appName = useBearStore((state) => state.appName);
+const NavBar = () => (
+  <AppBar position="static" sx={{ backgroundColor: '#E90074', boxShadow: 'none' }}>
+    <Toolbar>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        {/* Dashboard Link */}
+        <Typography variant="body1" sx={{ flexGrow: 1 }}>
+          <Link href="/" style={{ textDecoration: 'none', color: 'black' }}>Home</Link>
+        </Typography>
 
-  return (
-    <>
-      <AppBar position="sticky" sx={{ backgroundColor: "#ff5e15" }}>
-        <Toolbar>
-          <Link href={"/"}>
-            <FunctionsIcon sx={{ color: "#ffffff" }} fontSize="large" />
-          </Link>
-          <Typography
-            variant="body1"
-            sx={{
-              fontSize: "22px",
-              fontWeight: 500,
-              color: "#ffffff",
-              padding: "0 10px",
-              fontFamily: "Prompt",
-            }}>
-            {appName}
+        {/* Other Links */}
+        <Box sx={{ display: 'flex', gap: 3 }}>
+          <Typography variant="body1">
+            <Link href="/dashboard" style={{ textDecoration: 'none', color: 'black' }}>Dashboard</Link>
           </Typography>
-          <NavigationLink href="/page1" label="Page1" />
-          <div style={{ flexGrow: 1 }} />
-          <Button
-            color="#ffffff"
-            onClick={() => {
-              router.push("/page2");
-            }}>
-            <PersonIcon />
-          </Button>
-        </Toolbar>
-      </AppBar>
-      <main>{children}</main>
-    </>
-  );
-};
+          <Typography variant="body1">
+            <Link href="/Attendance" style={{ textDecoration: 'none', color: 'black' }}>Attendance</Link>
+          </Typography>
+          <Typography variant="body1">
+            <Link href="/working_hour" style={{ textDecoration: 'none', color: 'black' }}>Working Hour</Link>
+          </Typography>
+          <Typography variant="body1">
+            <Link href="/Employees" style={{ textDecoration: 'none', color: 'black' }}>Employee</Link>
+          </Typography>
+          <Typography variant="body1">
+            <Link href="/Register" style={{ textDecoration: 'none', color: 'black' }}>Log in</Link>
+          </Typography>
+        </Box>
+      </Box>
+    </Toolbar>
+  </AppBar>
+);
 
-const NavigationLink = ({ href, label }) => {
-  return (
-    <Link href={href} style={{ textDecoration: "none" }}>
-      <Typography
-        variant="body1"
-        sx={{
-          fontSize: "14px",
-          fontWeight: 500,
-          // textTransform: "uppercase",
-          color: "#fff",
-          padding: "0 10px", // Add padding on left and right
-        }}>
-        {label}
-      </Typography>{" "}
-    </Link>
-  );
-};
-
-export default NavigationLayout;
+export default NavBar;
