@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Container, Typography, Grid, TextField, Button, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Snackbar, Alert } from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
+import React, { useState } from "react";
+import { TextField, Button, Grid, Typography, Paper, Snackbar, Alert } from '@mui/material';
 
-export default function Employees() {
-  const [employees, setEmployees] = useState([]);
-  const [form, setForm] = useState({
-    name: '',
-    department: '',
-    role: '',
-    startTime: '',
-    endTime: ''
-  });
+export default function AuthPage() {
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -20,175 +16,187 @@ export default function Employees() {
     setOpenSnackbar(false);
   };
 
-  const fetchEmployees = async () => {
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const response = await axios.get('http://localhost:8000/employees');
-      setEmployees(response.data);
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-    }
-  };
+      const response = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginEmail,
+          password_hash: loginPassword,
+        }),
+      });
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setForm({ ...form, [id]: value });
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (form.startTime && form.endTime) {
-        const response = await axios.post('http://localhost:8000/employees', form);
-        if (response && response.data) {
-          setEmployees([...employees, response.data]);
-          setSnackbarMessage('Employee added successfully!');
-          setSnackbarSeverity('success');
-          setOpenSnackbar(true);
-        }
-        setForm({ name: '', department: '', role: '', startTime: '', endTime: '' });
-      } else {
-        setSnackbarMessage('Please enter both start and end time.');
-        setSnackbarSeverity('error');
-        setOpenSnackbar(true);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Login failed');
       }
+
+      const data = await response.json();
+      setSnackbarMessage('Login successful!');
+      setSnackbarSeverity('success');
+      setOpenSnackbar(true);
+      // Handle successful login (e.g., redirect)
     } catch (error) {
-      console.error("Error adding employee:", error);
-      setSnackbarMessage('Error adding employee.');
+      setSnackbarMessage(error.message);
       setSnackbarSeverity('error');
       setOpenSnackbar(true);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (registerPassword !== registerConfirmPassword) {
+      setSnackbarMessage('Passwords do not match');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      return;
+    }
+
     try {
-      await axios.delete(`http://localhost:8000/employees/${id}`);
-      setEmployees(employees.filter(employee => employee.id !== id));
-      setSnackbarMessage('Employee deleted successfully!');
+      const response = await fetch('/api/users/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: registerName,
+          email: registerEmail,
+          password_hash: registerPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Registration failed');
+      }
+
+      const data = await response.json();
+      setSnackbarMessage('Registration successful!');
       setSnackbarSeverity('success');
       setOpenSnackbar(true);
+      // Handle successful registration (e.g., redirect)
     } catch (error) {
-      console.error("Error deleting employee:", error);
-      setSnackbarMessage('Error deleting employee.');
+      setSnackbarMessage(error.message);
       setSnackbarSeverity('error');
       setOpenSnackbar(true);
     }
   };
 
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom sx={{ color: '#E90074', textAlign: 'center', marginTop: 4 }}>
-        Add a New Employee
-      </Typography>
-      <Grid container spacing={2} sx={{ mb: 4, p: 3, backgroundColor: '#FFC0D9', borderRadius: 2, boxShadow: 3 }}>
-        <Grid item xs={12} md={3}>
-          <TextField 
-            label="Name" 
-            id="name" 
-            value={form.name} 
-            fullWidth 
-            onChange={handleInputChange} 
-            sx={{ backgroundColor: '#fff' }}
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <TextField 
-            label="Department" 
-            id="department" 
-            value={form.department} 
-            fullWidth 
-            onChange={handleInputChange} 
-            sx={{ backgroundColor: '#fff' }}
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <TextField 
-            label="Role" 
-            id="role" 
-            value={form.role} 
-            fullWidth 
-            onChange={handleInputChange} 
-            sx={{ backgroundColor: '#fff' }}
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <TextField 
-            label="Start Time" 
-            type="time" 
-            id="startTime" 
-            value={form.startTime} 
-            fullWidth 
-            onChange={handleInputChange} 
-            sx={{ backgroundColor: '#fff' }}
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <TextField 
-            label="End Time" 
-            type="time" 
-            id="endTime" 
-            value={form.endTime} 
-            fullWidth 
-            onChange={handleInputChange} 
-            sx={{ backgroundColor: '#fff' }}
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Button 
-            variant="contained" 
-            onClick={handleSubmit} 
-            sx={{ backgroundColor: '#FF90BC', ':hover': { backgroundColor: '#ff9ebb' } }}
-          >
-            Submit
-          </Button>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Button 
-            variant="outlined" 
-            onClick={() => setForm({ name: '', department: '', role: '', startTime: '', endTime: '' })} 
-            sx={{ color: '#E90074', borderColor: '#E90074', ':hover': { backgroundColor: '#ffebf2' } }}
-          >
-            Reset
-          </Button>
-        </Grid>
+    <Grid container spacing={2} style={{ height: '100vh', justifyContent: 'center', alignItems: 'center' }}>
+      {/* Login Section */}
+      <Grid item xs={12} sm={6}>
+        <Paper elevation={3} style={{ padding: '20px' }}>
+          <Typography variant="h5" gutterBottom>
+            Login
+          </Typography>
+          <form onSubmit={handleLoginSubmit}>
+            <TextField
+              fullWidth
+              label="Email"
+              variant="outlined"
+              margin="normal"
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Password"
+              variant="outlined"
+              margin="normal"
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+            />
+            <Button
+              variant="contained"
+              fullWidth
+              sx={{
+                backgroundColor: '#E90074', // Pink color
+                ':hover': {
+                  backgroundColor: '#FF90BC' // Lighter pink on hover
+                },
+                marginTop: '16px'
+              }}
+              type="submit"
+            >
+              Login
+            </Button>
+          </form>
+        </Paper>
       </Grid>
 
-      <Typography variant="h5" gutterBottom sx={{ color: '#E90074', textAlign: 'center', marginBottom: 4 }}>
-        Current Employees
-      </Typography>
-      <Table>
-        <TableHead sx={{ backgroundColor: '#FFCAD4' }}>
-          <TableRow>
-            <TableCell sx={{ color: '#E90074' }}>Name</TableCell>
-            <TableCell sx={{ color: '#E90074' }}>Department</TableCell>
-            <TableCell sx={{ color: '#E90074' }}>Role</TableCell>
-            <TableCell sx={{ color: '#E90074' }}>Working Hours</TableCell>
-            <TableCell sx={{ color: '#E90074' }}>Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {employees.map(employee => (
-            <TableRow key={employee.id}>
-              <TableCell>{employee.name}</TableCell>
-              <TableCell>{employee.department}</TableCell>
-              <TableCell>{employee.role}</TableCell>
-              <TableCell>{employee.startTime} - {employee.endTime}</TableCell>
-              <TableCell>
-                <IconButton><Edit sx={{ color: '#E90074' }} /></IconButton>
-                <IconButton onClick={() => handleDelete(employee.id)}><Delete sx={{ color: '#E90074' }} /></IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {/* Register Section */}
+      <Grid item xs={12} sm={6}>
+        <Paper elevation={3} style={{ padding: '20px' }}>
+          <Typography variant="h5" gutterBottom>
+            Register
+          </Typography>
+          <form onSubmit={handleRegisterSubmit}>
+            <TextField
+              fullWidth
+              label="Name"
+              variant="outlined"
+              margin="normal"
+              value={registerName}
+              onChange={(e) => setRegisterName(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Email"
+              variant="outlined"
+              margin="normal"
+              type="email"
+              value={registerEmail}
+              onChange={(e) => setRegisterEmail(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Password"
+              variant="outlined"
+              margin="normal"
+              type="password"
+              value={registerPassword}
+              onChange={(e) => setRegisterPassword(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Confirm Password"
+              variant="outlined"
+              margin="normal"
+              type="password"
+              value={registerConfirmPassword}
+              onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+            />
+            <Button
+              variant="contained"
+              fullWidth
+              sx={{
+                backgroundColor: '#E90074', // Pink color
+                ':hover': {
+                  backgroundColor: '#FF90BC' // Lighter pink on hover
+                },
+                marginTop: '16px'
+              }}
+              type="submit"
+            >
+              Register
+            </Button>
+          </form>
+        </Paper>
+      </Grid>
 
+      {/* Snackbar for notifications */}
       <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleSnackbarClose}>
         <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Container>
+    </Grid>
   );
 }

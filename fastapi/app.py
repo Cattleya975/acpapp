@@ -1,158 +1,125 @@
-from fastapi import FastAPI, HTTPException
+from typing import Union, List
+from fastapi import FastAPI, HTTPException, Depends, Query, Path
+from pydantic import BaseModel, conint
+from database import insert_employee, get_employees, update_employee, delete_employee, connect_db, disconnect_db
+from routes.users import router
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Optional, constr
-from typing import List
-from datetime import datetime
-from database import connect_db, disconnect_db, database  # Ensure your database functions are imported
+from datetime import date, datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
+# Initialize the FastAPI application
 app = FastAPI()
 
-# CORS configuration (modify origins as required)
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Allow CORS for the frontend application
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Adjust as needed
+    allow_origins=["http://localhost:3000"],  # Replace with your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pydantic models for User
-class UserCreate(BaseModel):
-    username: str
-    password_hash: str
-    email: str
+# Include user-related routes
+app.include_router(router, prefix="/api")
 
-class UserUpdate(BaseModel):
-    username: Optional[str]
-    password_hash: Optional[str]
-    email: Optional[str]
-
-class User(BaseModel):
-    user_id: int
-    username: str
-    password_hash: str
-    email: str
-    created_at: datetime
-
-class UserLogin(BaseModel):
-    email: str
-    password_hash: str
-
-# Pydantic models for Employee
-class TimeString(str):  # Alternatively, you can use str directly with regex validation 
-    @classmethod
-    @property
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise TypeError('must be a string')
-        if not constr(regex=r'^\d{2}:\d{2}$').validate(value):
-            raise ValueError('must be in HH:MM format')
-        return value
-
-class EmployeeCreate(BaseModel):
-    name: str
-    department: str
-    role: str
-    start_time: TimeString
-    end_time: TimeString
-
-class Employee(EmployeeCreate):
-    id: int
-
-# User endpoints
-@app.post("/users/create", response_model=User)
-async def create_user(user: UserCreate):
-    existing_user = await get_user(user.username)
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Username already exists")
-
-    result = await insert_user(user.username, user.password_hash, user.email)
-    if result is None:
-        raise HTTPException(status_code=400, detail="Error creating user")
-    return result
-
-@app.get("/users/{user_id}", response_model=User)
-async def read_user(user_id: int):
-    result = await get_user(user_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return result
-
-@app.put("/users/{user_id}", response_model=User)
-async def update_user(user_id: int, user: UserUpdate):
-    result = await update_user(user_id, user.username, user.password_hash, user.email)
-    if result is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return result
-
-@app.delete("/users/{user_id}")
-async def delete_user(user_id: int):
-    result = await delete_user(user_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"detail": "User deleted"}
-
-@app.post("/users/login")
-async def login_user(user: UserLogin):
-    db_user = await get_user_by_email(user.email, user.password_hash)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {
-        "user_id": db_user.user_id,
-        "username": db_user.username,
-        "email": db_user.email,
-        "created_at": db_user.created_at
-    }
-
-# Employee endpoints
-@app.get("/employees", response_model=List[Employee])
-async def get_employees():
-    query = "SELECT * FROM employees"
-    return await database.fetch_all(query)
-
-@app.post("/employees", response_model=Employee)
-async def create_employee(employee: EmployeeCreate):
-    query = """
-        INSERT INTO employees (name, department, role, start_time, end_time)
-                VALUES (:name, :department, :role, :start_time, :end_time)
-        RETURNING id, name, department, role, start_time, end_time
-    """
-    employee_record = await database.fetch_one(query, values=employee.dict())
-    if employee_record:
-        return Employee(**employee_record)
-
-    raise HTTPException(status_code=400, detail="Error creating employee")
-
-@app.delete("/employees/{id}")
-async def delete_employee(id: int):
-    query = "DELETE FROM employees WHERE id = :id RETURNING *"
-    result = await database.fetch_one(query, values={"id": id})
-    if not result:
-        raise HTTPException(status_code=404, detail="Employee not found")
-    return {"message": "Employee deleted"}
-
-@app.put("/employees/{id}", response_model=Employee)
-async def update_employee(id: int, employee: EmployeeCreate):
-    query = """
-        UPDATE employees
-        SET name = :name, department = :department, role = :role, start_time = :start_time, end_time = :end_time
-        WHERE id = :id
-        RETURNING id, name, department, role, start_time, end_time
-    """
-    updated_employee = await database.fetch_one(query, values={**employee.dict(), "id": id})
-    if not updated_employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
-    return Employee(**updated_employee)
-
+# Database connection events
 @app.on_event("startup")
 async def startup():
-    await connect_db()  # Connect to the database on startup
+    await connect_db()
 
 @app.on_event("shutdown")
 async def shutdown():
-    await disconnect_db()  # Disconnect from the database on shutdown
+    await disconnect_db()
 
+# Define the Employee data model
+class Employee(BaseModel):
+    name: str
+    department: str
+    role: str
+    start_time: str
+    end_time: str
+
+# Get the list of employees from the database
+@app.get("/employees", response_model=List[Employee])
+async def get_employees_list():
+    employees = await get_employees()
+    if not employees:
+        logger.info("No employees found")
+        return []  # Return an empty list if no employees are found
+    return employees
+
+# Add a new employee to the database
+@app.post("/employees", response_model=Employee)
+async def add_employee_to_db(employee: Employee):
+    new_employee = await insert_employee(
+        name=employee.name,
+        department=employee.department,
+        role=employee.role,
+        start_time=employee.start_time,
+        end_time=employee.end_time
+    )
+    if new_employee:
+        logger.info(f"Added new employee: {new_employee}")
+    else:
+        raise HTTPException(status_code=400, detail="Failed to add employee")
+    return new_employee
+
+# Update an existing employee in the database
+@app.put("/employees/{employee_id}", response_model=Employee)
+async def update_employee_in_db(
+    employee_id: int, employee: Employee
+):
+    updated_employee = await update_employee(
+        employee_id=employee_id,
+        name=employee.name,
+        department=employee.department,
+        role=employee.role,
+        start_time=employee.start_time,
+        end_time=employee.end_time
+    )
+    if updated_employee:
+        logger.info(f"Updated employee: {updated_employee}")
+    else:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return updated_employee
+
+# Delete an employee from the database
+@app.delete("/employees/{employee_id}")
+async def delete_employee_from_db(employee_id: int):
+    deleted_employee = await delete_employee(employee_id)
+    if deleted_employee:
+        logger.info(f"Deleted employee: {deleted_employee}")
+    else:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return {"message": f"Employee {employee_id} deleted."}
+
+# Clear the employee list from the database (if needed)
+@app.delete("/employees")
+async def clear_employees_from_db():
+    employees = await get_employees()
+    if employees:
+        for employee in employees:
+            await delete_employee(employee['employee_id'])
+        logger.info("Cleared employee list.")
+        return {"message": "Employee list cleared."}
+    else:
+        raise HTTPException(status_code=404, detail="No employees to clear")
+
+# Error handling for HTTP exceptions
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    logger.error(f"HTTP Exception: {exc.detail} - {request.method} {request.url}")
+    return await request.app.exception_handler(exc)
+
+# Custom logging on all requests (optional)
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")
+    return response

@@ -9,8 +9,8 @@ export default function Employees() {
     name: '',
     department: '',
     role: '',
-    startTime: '',
-    endTime: ''
+    start_time: '', // Changed from startTime
+    end_time: ''    // Changed from endTime
   });
 
   // Fetch employees data
@@ -33,13 +33,13 @@ export default function Employees() {
 
   const handleSubmit = async () => {
     try {
-      if (form.startTime && form.endTime) {
+      if (form.start_time && form.end_time) { // Updated to match the new field names
         const response = await axios.post('http://localhost:8000/employees', form);
         if (response && response.data) {
           setEmployees([...employees, response.data]);
           console.log("New Employee Data:", response.data);
         }
-        setForm({ name: '', department: '', role: '', startTime: '', endTime: '' });
+        setForm({ name: '', department: '', role: '', start_time: '', end_time: '' }); // Reset with correct fields
       } else {
         alert("Please enter both start and end time.");
       }
@@ -98,8 +98,8 @@ export default function Employees() {
             <TextField 
               label="Start Time" 
               type="time" 
-              id="startTime" 
-              value={form.startTime} 
+              id="start_time"  // Changed from startTime to start_time
+              value={form.start_time} 
               fullWidth 
               onChange={handleInputChange} 
               sx={{ backgroundColor: '#fff' }}
@@ -109,8 +109,8 @@ export default function Employees() {
             <TextField 
               label="End Time" 
               type="time" 
-              id="endTime" 
-              value={form.endTime} 
+              id="end_time"  // Changed from endTime to end_time
+              value={form.end_time} 
               fullWidth 
               onChange={handleInputChange} 
               sx={{ backgroundColor: '#fff' }}
@@ -128,7 +128,7 @@ export default function Employees() {
           <Grid item xs={12} md={3}>
             <Button 
               variant="outlined" 
-              onClick={() => setForm({ name: '', department: '', role: '', startTime: '', endTime: '' })} 
+              onClick={() => setForm({ name: '', department: '', role: '', start_time: '', end_time: '' })}  // Reset with correct fields
               sx={{ color: '#E90074', borderColor: '#E90074', ':hover': { backgroundColor: '#ffebf2' } }}
             >
               Reset
@@ -156,7 +156,7 @@ export default function Employees() {
               <TableCell>{employee.name}</TableCell>
               <TableCell>{employee.department}</TableCell>
               <TableCell>{employee.role}</TableCell>
-              <TableCell>{employee.startTime} - {employee.endTime}</TableCell>
+              <TableCell>{employee.start_time} - {employee.end_time}</TableCell>  {/* Updated to match new field names */}
               <TableCell>
                 <IconButton><Edit sx={{ color: '#E90074' }} /></IconButton>
                 <IconButton onClick={() => handleDelete(employee.id)}><Delete sx={{ color: '#E90074' }} /></IconButton>
@@ -168,4 +168,3 @@ export default function Employees() {
     </Container>
   );
 }
-
