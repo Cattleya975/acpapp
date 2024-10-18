@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from database import insert_user, get_user_by_email, get_user, update_user, delete_user
+from database import insert_user, get_user_by_email, get_user, update_user, delete_user, log_user_login  # Import update_login_time
 
 router = APIRouter()
 
@@ -29,6 +29,7 @@ class User(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str  # Plain password for login validation
+    login_time: Optional[str] = None  # Add login_time to track when user logs in
 
 # Endpoint to create a new user
 @router.post("/create", response_model=User)
@@ -70,20 +71,27 @@ async def delete_user_endpoint(user_id: int):
     return {"detail": "User deleted"}
 
 # Endpoint for user login
+
 @router.post("/login")
 async def login_user(user: UserLogin):
     db_user = await get_user_by_email(user.email)
     if db_user is None:
+        # Log the failed login attempt
+        await log_user_login(None, "Failure")  # You can log without a user_id in case of failure
         raise HTTPException(status_code=404, detail="User not found")
     
     # Verify the plain password
     if user.password != db_user["password"]:
+        await log_user_login(db_user["user_id"], "Failure")
         raise HTTPException(status_code=400, detail="Incorrect password")
     
+    # Successful login
+    await log_user_login(db_user["user_id"], "Success")
+
     # Return user info (excluding the password)
     return {
         "user_id": db_user["user_id"],
         "username": db_user["username"],
         "email": db_user["email"],
-        "created_at": db_user["created_at"]
+        "created_at": db_user["created_at"],
     }

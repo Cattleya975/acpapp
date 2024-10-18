@@ -25,7 +25,7 @@ const NavBar = () => (
             <Link href="/Employees" style={{ textDecoration: 'none', color: 'black' }}>Employee</Link>
           </Typography>
           <Typography variant="body1">
-            <Link href="/Register" style={{ textDecoration: 'none', color: 'black' }}>Log in</Link>
+            <Link href="/register" style={{ textDecoration: 'none', color: 'black' }}>Log in</Link>
           </Typography>
         </Box>
       </Box>

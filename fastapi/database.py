@@ -1,6 +1,12 @@
 from databases import Database
 from typing import Optional  # Import Optional for optional parameters
 from datetime import datetime
+import logging
+from fastapi import logger
+
+# Configure logger
+logger = logging.getLogger("app_logger")
+logging.basicConfig(level=logging.INFO)
 
 # Database connection details
 POSTGRES_USER = "temp"
@@ -25,6 +31,17 @@ async def disconnect_db():
 # ----------------------------------------------
 # User Functions (Using Plain Passwords)
 # ----------------------------------------------
+
+# Log user login activity
+async def log_user_login(user_id: int, status: str):
+    query = """
+    INSERT INTO login (user_id, login_time, status)
+    VALUES (:user_id, NOW(), :status)
+    """
+    values = {"user_id": user_id, "status": status}
+    await database.execute(query=query, values=values)
+
+
 
 # Insert user into the database with plain password
 async def insert_user(username: str, password: str, email: str):
@@ -128,6 +145,113 @@ async def insert_attendance(employee_id: int, name: str, department: str, status
 
 # Get all attendance records for a specific date
 async def get_attendance_by_date(date: str):
-    print(f"Fetching attendance for date {date}")  # Debug print
-    query = "SELECT * FROM attendance WHERE date = :date"
-    return await database.fetch_all(query=query, values={"date": date})
+    logger.info(f"Fetching attendance for date {date}")
+    try:
+        query = "SELECT * FROM attendance WHERE date = :date"
+        attendance_records = await database.fetch_all(query=query, values={"date": date})
+
+        # Check if any records are returned
+        if not attendance_records:
+            logger.info(f"No attendance records found for {date}")
+            return []
+
+        logger.info(f"Attendance records fetched successfully for {date}")
+        return attendance_records
+
+    except Exception as e:
+        logger.error(f"Error occurred while fetching attendance: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch attendance")
+
+
+
+# ----------------------------------------------
+# Working Hours Functions
+# ----------------------------------------------
+
+async def insert_or_update_working_hour(employee_id: int, name: str, time_in: Optional[str], timeliness: str, date: str):
+    try:
+        logger.info(f"Inserting or updating working hour for employee_id {employee_id} on date {date}")
+
+        # Convert the date string to a datetime.date object
+        parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+        # Convert the time_in string (if available) to a datetime.time object
+        if time_in:
+            parsed_time_in = datetime.strptime(time_in, "%I:%M:%S %p").time()
+        else:
+            parsed_time_in = None
+
+        query = """
+        INSERT INTO working_hours (employee_id, name, time_in, timeliness, date)
+        VALUES (:employee_id, :name, :time_in, :timeliness, :date)
+        ON CONFLICT (employee_id, date) 
+        DO UPDATE SET 
+            time_in = EXCLUDED.time_in,
+            timeliness = EXCLUDED.timeliness
+        """
+        values = {
+            "employee_id": employee_id,
+            "name": name,
+            "time_in": parsed_time_in,  # Pass the parsed time_in
+            "timeliness": timeliness,
+            "date": parsed_date  # Pass the parsed date
+        }
+        await database.execute(query=query, values=values)
+        logger.info("Working hour record inserted or updated successfully")
+    except Exception as e:
+        logger.error(f"Error inserting or updating working hour: {str(e)}")
+        raise e
+
+# Fetch all working hour records
+async def insert_or_update_working_hour(employee_id: int, name: str, time_in: Optional[str], timeliness: str, date: str):
+    try:
+        logger.info(f"Inserting or updating working hour for employee_id {employee_id} on date {date}")
+
+        # Convert the date string to a datetime.date object
+        parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+        # Convert the time_in string (if available) to a datetime.time object
+        if time_in:
+            parsed_time_in = datetime.strptime(time_in, "%I:%M:%S %p").time()
+        else:
+            parsed_time_in = None
+
+        query = """
+        INSERT INTO working_hours (employee_id, name, time_in, timeliness, date)
+        VALUES (:employee_id, :name, :time_in, :timeliness, :date)
+        ON CONFLICT (employee_id, date) 
+        DO UPDATE SET 
+            time_in = EXCLUDED.time_in,
+            timeliness = EXCLUDED.timeliness
+        """
+        values = {
+            "employee_id": employee_id,
+            "name": name,
+            "time_in": parsed_time_in,  # Pass the parsed time_in
+            "timeliness": timeliness,
+            "date": parsed_date  # Pass the parsed date
+        }
+        await database.execute(query=query, values=values)
+        logger.info("Working hour record inserted or updated successfully")
+    except Exception as e:
+        logger.error(f"Error inserting or updating working hour: {str(e)}")
+        raise e
+
+# Fetch all working hour records
+async def get_all_working_hours():
+    try:
+        query = """
+        SELECT employee_id, name, time_in, timeliness, date 
+        FROM working_hours 
+        ORDER BY date DESC
+        """
+        working_hours_records = await database.fetch_all(query=query)
+
+        # Convert the 'date' field to string in the result set
+        for record in working_hours_records:
+            record["date"] = record["date"].strftime("%Y-%m-%d")
+
+        return working_hours_records
+    except Exception as e:
+        logger.error(f"Error fetching working hours: {str(e)}")
+        raise e

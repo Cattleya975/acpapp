@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { TextField, Button, Grid, Typography, Paper, Snackbar, Alert } from '@mui/material';
+import { useRouter } from 'next/router';  // Import useRouter from next/router
 
 export default function AuthPage() {
+  const router = useRouter();  // Initialize the useRouter hook
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
@@ -40,7 +43,9 @@ export default function AuthPage() {
       setSnackbarMessage('Login successful!');
       setSnackbarSeverity('success');
       setOpenSnackbar(true);
-      // Handle successful login (e.g., redirect, save token)
+
+      // Redirect to dashboard upon successful login
+      router.push('/dashboard');  // Navigate to the dashboard page
     } catch (error) {
       setSnackbarMessage(error.message);
       setSnackbarSeverity('error');
